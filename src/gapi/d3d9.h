@@ -53,6 +53,36 @@ namespace GAPI {
     using namespace Core;
 
     typedef ::Vertex Vertex;
+    
+    struct FFPVertex {
+      float    coord[3];
+      float    normal[3];
+      float    texCoord[2];
+      D3DCOLOR color;
+    };
+    
+    void convertVertexToFFP(const ::Vertex& input, FFPVertex& output) {
+        // Scaling handled by matrices for pos...
+        output.coord[0] = (float)input.coord.x;
+        output.coord[1] = (float)input.coord.y;
+        output.coord[2] = (float)input.coord.z;
+
+        output.normal[0] = (float)input.normal.x / 32767.0f;
+        output.normal[1] = (float)input.normal.y / 32767.0f;
+        output.normal[2] = (float)input.normal.z / 32767.0f;
+
+        output.texCoord[0] = (float)input.texCoord.x / 32767.0f;
+        output.texCoord[1] = (float)input.texCoord.y / 32767.0f;
+
+        float color[4];
+        color[0] = ((float)input.light.x / 255.f) * ((float)input.color.x / 255.f);
+        color[1] = ((float)input.light.y / 255.f) * ((float)input.color.y / 255.f);
+        color[2] = ((float)input.light.z / 255.f) * ((float)input.color.z / 255.f);
+        color[3] = ((float)input.light.w / 255.f) * ((float)input.color.w / 255.f);
+
+        // D3DCOLOR is read as ARGB...
+        output.color = D3DCOLOR_COLORVALUE( color[0], color[1], color[2], color[3] );
+    }
 
     int cullMode, blendMode;
     uint32 clearColor;
@@ -119,6 +149,14 @@ namespace GAPI {
     };
 
     struct Shader {
+#ifdef FFP
+       void init(Core::Pass pass, int type, int* def, int defCount) {}
+       void deinit() {}
+       void bind() {}
+       void validate() {}
+       void setParam(UniformType uType, const vec4& value, int count = 1) {}
+       void setParam(UniformType uType, const mat4& value, int count = 1) {}
+#else
         LPDIRECT3DVERTEXSHADER9 VS;
         LPDIRECT3DPIXELSHADER9  PS;
 
@@ -239,6 +277,7 @@ namespace GAPI {
         void setParam(UniformType uType, const mat4 &value, int count = 1) {
             setConstant(uType, (float*)&value, count * 4);
         }
+#endif
     };
 
 // Texture
@@ -341,6 +380,11 @@ namespace GAPI {
 
             if (Core::active.textures[sampler] != this) {
                 Core::active.textures[sampler] = this;
+#ifdef FFP
+                if (sampler != sDiffuse) {
+                  return;
+                }
+#endif
                 if (tex2D) {
                     device->SetTexture(sampler, tex2D);
                     if (opt & OPT_VERTEX) {
@@ -374,6 +418,11 @@ namespace GAPI {
         void unbind(int sampler) {
             if (Core::active.textures[sampler]) {
                 Core::active.textures[sampler] = NULL;
+            #ifdef FFP
+                if (sampler != sDiffuse) {
+                  return;
+                }
+            #endif
                 device->SetTexture(sampler, NULL);
             }
         }
@@ -401,7 +450,12 @@ namespace GAPI {
             D3DPOOL pool = dynamic ? D3DPOOL_DEFAULT : D3DPOOL_MANAGED;
 
             D3DCHECK(device->CreateIndexBuffer  (iCount * sizeof(Index),  usage, sizeof(Index) == 2 ? D3DFMT_INDEX16 : D3DFMT_INDEX32, pool, &IB, NULL));
-            D3DCHECK(device->CreateVertexBuffer (vCount * sizeof(Vertex), usage, D3DFMT_UNKNOWN, pool, &VB, NULL));
+            
+#ifdef FFP
+            D3DCHECK(device->CreateVertexBuffer (vCount * sizeof(FFPVertex), usage, D3DFMT_UNKNOWN, pool, &VB, NULL));
+#else
+            D3DCHECK(device->CreateVertexBuffer(vCount * sizeof(Vertex), usage, D3DFMT_UNKNOWN, pool, &VB, NULL));
+#endif
 
             update(indices, iCount, vertices, vCount);
 
@@ -429,16 +483,28 @@ namespace GAPI {
             }
 
             if (vertices && vCount) {
-                size = vCount * sizeof(vertices[0]);
-                D3DCHECK(VB->Lock(0, 0, &ptr, dynamic ? D3DLOCK_DISCARD: 0));
+#ifdef FFP
+                size = vCount * sizeof(FFPVertex);
+                D3DCHECK(VB->Lock(0, 0, &ptr, dynamic ? D3DLOCK_DISCARD : 0));
+                for (int vtx = 0; vtx < vCount; vtx++) {
+                  convertVertexToFFP(vertices[vtx], ((FFPVertex*)ptr)[vtx]);
+                }
+#else                
+                size = vCount * sizeof(::Vertex);
+                D3DCHECK(VB->Lock(0, 0, &ptr, dynamic ? D3DLOCK_DISCARD : 0));
                 memcpy(ptr, vertices, size);
+#endif
                 D3DCHECK(VB->Unlock());
             }
         }
 
         void bind(const MeshRange &range) const {
             device->SetIndices(IB);
+#ifdef FFP
+            device->SetStreamSource(0, VB, 0, sizeof(FFPVertex));
+#else                
             device->SetStreamSource(0, VB, 0, sizeof(Vertex));
+#endif
         }
 
         void initNextRange(MeshRange &range, int &aIndex) const {
@@ -486,6 +552,15 @@ namespace GAPI {
             support.profTiming = false;
         #endif
 
+#ifdef FFP
+        const D3DVERTEXELEMENT9 VERTEX_DECL[] = {
+            {0, OFFSETOF(FFPVertex, coord),    D3DDECLTYPE_FLOAT3,   D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0}, // aCoord
+            {0, OFFSETOF(FFPVertex, normal),   D3DDECLTYPE_FLOAT3,   D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_NORMAL,   0}, // aNormal
+            {0, OFFSETOF(FFPVertex, texCoord), D3DDECLTYPE_FLOAT2,   D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 0}, // aTexCoord
+            {0, OFFSETOF(FFPVertex, color),    D3DDECLTYPE_D3DCOLOR, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_COLOR,    0}, // aColor
+            D3DDECL_END()
+        };
+#else
         const D3DVERTEXELEMENT9 VERTEX_DECL[] = {
             {0, OFFSETOF(Vertex, coord),    D3DDECLTYPE_SHORT4,   D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0}, // aCoord
             {0, OFFSETOF(Vertex, normal),   D3DDECLTYPE_SHORT4,   D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_NORMAL,   0}, // aNormal
@@ -494,6 +569,7 @@ namespace GAPI {
             {0, OFFSETOF(Vertex, light),    D3DDECLTYPE_UBYTE4N,  D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_COLOR,    1}, // aLight
             D3DDECL_END()
         };
+#endif
 
         device->CreateVertexDeclaration(VERTEX_DECL, &vertexDecl);
 
@@ -591,8 +667,29 @@ namespace GAPI {
     void resetState() {
         device->SetVertexDeclaration(vertexDecl);
         device->SetRenderState(D3DRS_ZFUNC, D3DCMP_LESSEQUAL);
-        device->SetRenderState(D3DRS_LIGHTING, FALSE);
         device->SetRenderState(D3DRS_SCISSORTESTENABLE, TRUE);
+        device->SetRenderState(D3DRS_LIGHTING, FALSE);
+        device->SetRenderState(D3DRS_COLORVERTEX, TRUE);
+        device->SetRenderState(D3DRS_DIFFUSEMATERIALSOURCE, D3DMCS_COLOR1);
+
+#ifdef FFP
+        mat4 m;
+        m.identity();
+
+        device->SetTransform(D3DTS_WORLDMATRIX(0), (D3DMATRIX*)&m);
+        device->SetTransform(D3DTS_VIEW, (D3DMATRIX*)&m);
+        device->SetTransform(D3DTS_PROJECTION, (D3DMATRIX*)&m);
+
+        for (int i = 0; i < 8; i++) {
+          device->SetTextureStageState(i, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
+          device->SetTextureStageState(i, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
+          device->SetTextureStageState(i, D3DTSS_ALPHAOP, D3DTOP_MODULATE);
+
+          device->SetTextureStageState(i, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
+          device->SetTextureStageState(i, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+          device->SetTextureStageState(i, D3DTSS_COLOROP, D3DTOP_MODULATE);
+        }
+#endif
     }
 
     int cacheRenderTarget(bool depth, int width, int height) {
@@ -722,7 +819,18 @@ namespace GAPI {
             (a ? D3DCOLORWRITEENABLE_ALPHA : 0));
     }
 
-    void setAlphaTest(bool enable) {}
+    void setAlphaTest(bool enable) {
+#ifdef FFP
+        device->SetRenderState(D3DRS_ALPHATESTENABLE, !!enable);
+        if (enable) {
+          device->SetRenderState(D3DRS_ALPHAFUNC, D3DCMP_GREATEREQUAL);
+          device->SetRenderState(D3DRS_ALPHAREF, 127);
+        } else {
+          device->SetRenderState(D3DRS_ALPHAFUNC, D3DCMP_ALWAYS);
+          device->SetRenderState(D3DRS_ALPHAREF, 0);
+        }
+#endif
+    }
 
     void setCullMode(int rsMask) {
         cullMode = rsMask;
@@ -759,16 +867,63 @@ namespace GAPI {
         device->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);
     }
 
-    void setViewProj(const mat4 &mView, const mat4 &mProj) {}
+    void setViewProj(const mat4 &mView, const mat4 &mProj) {
+      device->SetTransform(D3DTS_VIEW, (D3DMATRIX*)&mView);
+      device->SetTransform(D3DTS_PROJECTION, (D3DMATRIX*)&mProj);
+    }
 
     void updateLights(vec4 *lightPos, vec4 *lightColor, int count) {
-        if (active.shader) {
-            active.shader->setParam(uLightColor, lightColor[0], count);
-            active.shader->setParam(uLightPos,   lightPos[0],   count);
+#ifdef FFP
+        int lightsCount = 0;
+        
+        const DWORD amb = (DWORD)(Core::active.material.y * 256) & 0xFF;
+        const DWORD ambient = (0xFF << 24) | (amb << 16) | (amb << 8) | amb;
+        device->SetRenderState(D3DRS_AMBIENT, ambient);
+
+        for (int i = 0; i < MAX_LIGHTS; i++) {
+            if (lightColor[i].w != 1.0f) {
+                device->LightEnable(i, TRUE);
+                lightsCount++;
+            }
+            else {
+                device->LightEnable(i, FALSE);
+                continue;
+            }
+            
+            const vec3 pos(lightPos[i].xyz());
+            const vec4 color(lightColor[i].xyz(), 1.0f);
+            const float att = lightColor[i].w * lightColor[i].w;
+            
+            D3DLIGHT9 light;
+            memset(&light, 0, sizeof(light));
+            light.Position = *(D3DVECTOR*)&pos;
+            light.Diffuse = *(D3DCOLORVALUE*)&color;
+            light.Range = 10000.f;
+            light.Attenuation2 = att;
+            light.Type = D3DLIGHT_POINT;
+            
+            device->SetLight(i, &light);
         }
+        
+        if (lightsCount) {
+          device->SetRenderState(D3DRS_LIGHTING, TRUE);
+        }
+        else {
+          device->SetRenderState(D3DRS_LIGHTING, FALSE);
+        }
+#else
+
+        if (active.shader) {
+            active.shader->setParam(uLightColor, lightColor[0], min(4, count));
+            active.shader->setParam(uLightPos,   lightPos[0],   min(4, count));
+        }
+#endif
     }
 
     void DIP(Mesh *mesh, const MeshRange &range) {
+#ifdef FFP
+        device->SetTransform(D3DTS_WORLDMATRIX(0), (D3DMATRIX*)&mModel);
+#endif
         device->DrawIndexedPrimitive(D3DPT_TRIANGLELIST, range.vStart, 0, mesh->vCount, range.iStart, range.iCount / 3);
     }
 
