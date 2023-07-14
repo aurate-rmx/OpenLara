@@ -234,10 +234,7 @@
 #endif
 
 #ifdef FFP
-    #ifndef _GAPI_D3D9
-        // Couldnt get this working in D3D9-FFP yet...
-        #define SPLIT_BY_TILE
-    #endif
+    #define SPLIT_BY_TILE
     #if defined(_GAPI_GU)
         #define SPLIT_BY_CLUT
     #endif
@@ -1196,9 +1193,8 @@ namespace Core {
             GAPI::setAlphaTest((renderState & RS_DISCARD) != 0);
 
         if (mask & RS_TARGET) {
-          //if((reqTarget.op & (RT_CLEAR_DEPTH | RT_CLEAR_COLOR)) != 0)
             GAPI::clear((reqTarget.op & RT_CLEAR_COLOR) != 0, (reqTarget.op & RT_CLEAR_DEPTH) != 0);
-          renderState &= ~RS_TARGET;
+            renderState &= ~RS_TARGET;
         }
 
         active.renderState = renderState;
@@ -1309,7 +1305,7 @@ namespace Core {
 
     void setFog(const vec4 &params) {
     #if defined(_GAPI_D3D8) || defined(_GAPI_C3D) || defined(_GAPI_SW) || defined(FFP)
-        //GAPI::setFog(params);
+        GAPI::setFog(params);
     #else
         ASSERT(Core::active.shader);
         Core::active.shader->setParam(uFogParams, params);

@@ -821,6 +821,25 @@ namespace GAPI {
             (a ? D3DCOLORWRITEENABLE_ALPHA : 0));
     }
 
+
+    void setFog(const vec4& params) {
+      if (params.w > 0.0f) {
+        device->SetRenderState(D3DRS_FOGENABLE, TRUE);
+
+        DWORD fogColor = 0xFF000000
+          | (DWORD(clamp(params.z * 255.0f, 0.0f, 255.0f)) << 0)
+          | (DWORD(clamp(params.y * 255.0f, 0.0f, 255.0f)) << 8)
+          | (DWORD(clamp(params.x * 255.0f, 0.0f, 255.0f)) << 16);
+        device->SetRenderState(D3DRS_FOGCOLOR, fogColor);
+
+        ASSERT(Core::active.shader);
+        Core::active.shader->setParam(uFogParams, params); // color.rgb, factor
+      }
+      else {
+        device->SetRenderState(D3DRS_FOGENABLE, FALSE);
+      }
+    }
+
     void setAlphaTest(bool enable) {
 #ifdef FFP
         device->SetRenderState(D3DRS_ALPHATESTENABLE, !!enable);
