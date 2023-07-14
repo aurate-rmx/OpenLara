@@ -1,0 +1,31 @@
+name: Build
+
+on:
+  push:
+    branches: [ remix, master ]
+  pull_request:
+    branches: [ remix, master ]
+
+jobs:
+  build-windows:
+    runs-on: windows-2019
+  
+    strategy:
+      matrix:
+        configuration: [Release, Debug]
+        platform: [Win32]
+    
+    steps:
+      - uses: actions/checkout@v3
+    
+      - name: Setup MSBuild.exe
+        uses: microsoft/setup-msbuild@v1.0.3
+      
+      - name: Build Open Lara for RTX Remix
+        run: msbuild 'src\platform\win_remix\OpenLara.sln' /p:configuration=${{ matrix.configuration }} /p:platform=${{ matrix.platform }}
+
+      - name: Upload binaries
+        uses: actions/upload-artifact@v3
+        with:
+          name: open-lara-remix-${{github.run_number}}-${{matrix.configuration}}
+          path: bin\*

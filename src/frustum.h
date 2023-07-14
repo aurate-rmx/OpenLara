@@ -25,6 +25,9 @@ struct Frustum {
     // AABB visibility check
     bool isVisible(const vec3 &min, const vec3 &max) const {
         if (count < 4) return false;
+        #ifdef WIN_REMIX
+            return true;
+        #endif
 
         for (int i = start; i < start + count; i++) {
             const vec3 &n =  planes[i].xyz();
@@ -45,6 +48,10 @@ struct Frustum {
 
     // OBB visibility check
     bool isVisible(const mat4 &matrix, const vec3 &min, const vec3 &max) {
+        #ifdef WIN_REMIX
+            return true;
+        #endif
+
         start = count;
         // transform clip planes (relative)
         mat4 m = matrix.inverseOrtho();
@@ -62,6 +69,9 @@ struct Frustum {
     // Sphere visibility check
     bool isVisible(const vec3 &center, float radius) {
         if (count < 4) return false;
+        #ifdef WIN_REMIX
+            return true;
+        #endif
 
         for (int i = 0; i < count; i++)
             if (planes[i].xyz().dot(center) + planes[i].w < -radius)

@@ -1747,7 +1747,9 @@ struct Inventory {
             m.identity();
             Core::setViewProj(m, m);
             Core::mModel.identity();
-            Core::mModel.scale(vec3(1.0f / 32767.0f));
+            #ifndef _GAPI_D3D9
+                Core::mModel.scale(vec3(1.0f / 32767.0f));
+            #endif
         #endif
 
         short o_frame = 32767;
