@@ -1,3 +1,10 @@
+# Open Lara RTX-Remix
+
+A fork of the OpenLara project which uses RTX-Remix.
+
+Get top of tree builds here:
+[![Build Status](https://github.com/aurate-rmx/OpenLara/actions/workflows/build.yml/badge.svg)](https://github.com/aurate-rmx/OpenLara/actions/workflows/build.yml)
+
 # OpenLara
 Classic Tomb Raider open-source engine
 

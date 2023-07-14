@@ -121,7 +121,9 @@ namespace GAPI {
     }
 
 // Shader
+#ifndef FFP
     #include "shaders/d3d9/shaders.h"
+#endif
 
     enum {
         USAGE_VS,
