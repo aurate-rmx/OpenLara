@@ -500,7 +500,12 @@ void osToggleVR(bool enable) {
 #endif
 
 #define LIGHT_STACK_SIZE     1
+#ifdef WIN_REMIX
+// Under Remix we aren't constrained by # lights.
+#define MAX_LIGHTS           128
+#else
 #define MAX_LIGHTS           4
+#endif
 #define MAX_RENDER_BUFFERS   32
 #define MAX_CONTACTS         15
 #define NOISE_TEX_SIZE       32
