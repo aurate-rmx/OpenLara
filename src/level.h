@@ -1848,8 +1848,35 @@ struct Level : IGame {
     }
 
     void setMainLight(Controller *controller) {
-        Core::lightPos[0]   = controller->mainLightPos;
-        Core::lightColor[0] = vec4(controller->mainLightColor.xyz(), 1.0f / controller->mainLightColor.w);
+#ifdef WIN_REMIX
+      // Lights are "free" in path tracing, so send as many as possible.
+
+      uint32 lightIdx = 4; // Start at 4, since OpenLara already used the first 4 lights for other things...
+
+      const auto& addLight = [&](const TR::Room::Light& light) {
+        if (light.intensity == 0)
+          return;
+
+        vec3 lightPos = vec3(float(light.x), float(light.y), float(light.z));
+        vec4 lightColor = vec4(vec3(light.color.r, light.color.g, light.color.b) * (1.0f / 255.0f), float(light.radius));
+
+        Core::lightColor[lightIdx] = vec4(lightColor.xyz(), 1.0f / lightColor.w);
+        Core::lightPos[lightIdx] = lightPos;
+        ++lightIdx;
+      };
+
+      // Search all rooms
+      for (int i = 0; i < controller->level->roomsCount; i++) {
+        const auto& room = controller->level->rooms[i];
+        // Add alll lights in room
+        for (int j = 0; j < room.lightsCount && lightIdx < (MAX_LIGHTS - 4); j++) {
+          addLight(room.lights[j]);
+        }
+      }
+#else
+      Core::lightPos[0] = controller->mainLightPos;
+      Core::lightColor[0] = vec4(controller->mainLightColor.xyz(), 1.0f / controller->mainLightColor.w);
+#endif
     }
 
     void renderSky() {

@@ -1580,7 +1580,11 @@ struct MeshBuilder {
 
                 #ifdef SPLIT_BY_TILE
                     int clutOffset = underwater ? 512 : 0;
-                    atlas->bindTile(range.tile, range.clut + clutOffset);
+                    if (range.tile == 0 && (range.clut + clutOffset) == 0) {
+                      atlas->unbind(sDiffuse);
+                    } else {
+                      atlas->bindTile(range.tile, range.clut + clutOffset);
+                    }
                 #endif
 
                 mesh->render(range);
