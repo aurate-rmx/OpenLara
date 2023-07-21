@@ -394,7 +394,7 @@ namespace Core {
             }
 
             void setLighting(Quality value) {
-            #if defined(_GAPI_SW) || defined(_GAPI_GU)
+            #if defined(_GAPI_SW) || defined(_GAPI_GU) || defined(FFP)
                 lighting = LOW;
             #else
                 lighting = value;
@@ -402,7 +402,7 @@ namespace Core {
             }
 
             void setShadows(Quality value) {
-            #if defined(_GAPI_SW) || defined(_GAPI_GU)
+            #if defined(_GAPI_SW) || defined(_GAPI_GU) || defined(FFP)
                 shadows = LOW;
             #else
                 shadows = value;
@@ -410,7 +410,7 @@ namespace Core {
             }
 
             void setWater(Quality value) {
-            #if defined(_GAPI_SW) || defined(_GAPI_GU)
+            #if defined(_GAPI_SW) || defined(_GAPI_GU) || defined(FFP)
                 water = LOW;
             #else
                 if (value > LOW && !(support.texFloat || support.texHalf))

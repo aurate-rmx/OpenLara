@@ -1880,7 +1880,7 @@ struct Level : IGame {
     }
 
     void renderSky() {
-        #if !defined(_GAPI_GL) && !defined(_GAPI_D3D11)
+        #if !defined(_GAPI_GL) && !defined(_GAPI_D3D11) && !defined(_GAPI_D3D9)
             return;
         #endif
         ASSERT(mesh->transparent == 0);
@@ -1917,7 +1917,7 @@ struct Level : IGame {
         mat4 mView = Core::mView;
         mat4 mProj = Core::mProj;
 
-        Core::mView.setPos(vec3(0));
+        Core::mView.setPos(vec3(0.0f));
         Core::setViewProj(Core::mView, Core::mProj);
 
         setShader(Core::passSky, type, false, false);
@@ -1943,7 +1943,9 @@ struct Level : IGame {
             Core::setCullMode(cmFront);
         } else {
             Basis b;
-            Core::setBasis(&b, 1); // unused
+            b.identity();
+            Core::setBasis(&b, 1); // used by FFP
+            mesh->transparent = 0;
             mesh->renderModel(level.extra.sky);
         }
 
@@ -2575,6 +2577,19 @@ struct Level : IGame {
     }
 
     virtual void getVisibleRooms(RoomDesc *roomsList, int &roomsCount, int from, int to, const vec4 &viewPort, bool water, int count = 0) {
+#ifdef WIN_REMIX
+      // render all the rooms in Remix
+      for (int i = 0; i < level.roomsCount && i < 255; i++) {
+        TR::Room& room = level.rooms[i];
+
+        if (Core::pass == Core::passCompose && water && waterCache && from != TR::NO_ROOM && (level.rooms[from].flags.water ^ level.rooms[i].flags.water))
+          waterCache->setVisible(from, i);
+
+        room.flags.visible = true;
+        roomsList[roomsCount++] = RoomDesc(i, viewPort);
+      }
+      return;
+#endif
         if (roomsCount >= 255 || count > 16) {
             //ASSERT(false);
             return;
@@ -2601,11 +2616,21 @@ struct Level : IGame {
     }
 
     void renderOpaque(RoomDesc *roomsList, int roomsCount) {
+#ifdef FFP
+      // draw sky first under FFP
+      if (Core::pass != Core::passShadow && skyIsVisible) {
+        Core::setDepthWrite(false);
+        renderSky();
+        Core::setDepthWrite(true);
+      }
+#endif
         renderRooms(roomsList, roomsCount, 0);
         renderEntities(0);
+#ifndef FFP
         if (Core::pass != Core::passShadow && skyIsVisible) {
             renderSky();
         }
+#endif
     }
 
     void renderTransparent(RoomDesc *roomsList, int roomsCount) {

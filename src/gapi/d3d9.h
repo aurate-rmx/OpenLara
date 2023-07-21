@@ -582,6 +582,7 @@ namespace GAPI {
         vertexDecl->Release();
         if (defRT) defRT->Release();
         if (defDS) defDS->Release();
+        defRT = defDS = NULL;
     }
 
     void resetDevice() {
@@ -608,6 +609,7 @@ namespace GAPI {
 
         if (defRT) defRT->Release();
         if (defDS) defDS->Release();
+        defRT = defDS = NULL;
 
         D3DCHECK(device->Reset(&d3dpp));
         device->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &defRT);
@@ -673,6 +675,7 @@ namespace GAPI {
         device->SetRenderState(D3DRS_LIGHTING, FALSE);
         device->SetRenderState(D3DRS_COLORVERTEX, TRUE);
         device->SetRenderState(D3DRS_DIFFUSEMATERIALSOURCE, D3DMCS_COLOR1);
+        device->SetRenderState(D3DRS_AMBIENTMATERIALSOURCE, D3DMCS_MATERIAL);
 
 #ifdef FFP
         mat4 m;
@@ -832,8 +835,9 @@ namespace GAPI {
           | (DWORD(clamp(params.x * 255.0f, 0.0f, 255.0f)) << 16);
         device->SetRenderState(D3DRS_FOGCOLOR, fogColor);
 
-        ASSERT(Core::active.shader);
-        Core::active.shader->setParam(uFogParams, params); // color.rgb, factor
+        if (Core::active.shader) {
+          Core::active.shader->setParam(uFogParams, params); // color.rgb, factor
+        }
       }
       else {
         device->SetRenderState(D3DRS_FOGENABLE, FALSE);
@@ -897,8 +901,7 @@ namespace GAPI {
 #ifdef FFP
         int lightsCount = 0;
         
-        const DWORD amb = (DWORD)(Core::active.material.y * 256) & 0xFF;
-        const DWORD ambient = (0xFF << 24) | (amb << 16) | (amb << 8) | amb;
+        const DWORD ambient = 0xFF808080;
         device->SetRenderState(D3DRS_AMBIENT, ambient);
 
         for (int i = 0; i < MAX_LIGHTS; i++) {
@@ -944,6 +947,13 @@ namespace GAPI {
     void DIP(Mesh *mesh, const MeshRange &range) {
 #ifdef FFP
         device->SetTransform(D3DTS_WORLDMATRIX(0), (D3DMATRIX*)&mModel);
+
+        D3DMATERIAL9 material;
+        material.Diffuse = { Core::active.material.x, Core::active.material.x, Core::active.material.x, 1.0f };
+        material.Ambient = { Core::active.material.y, Core::active.material.y, Core::active.material.y, 1.0f };
+        material.Specular = { Core::active.material.z, Core::active.material.z, Core::active.material.z, 1.0f };
+        material.Emissive = { 0.0f };
+        device->SetMaterial(&material);
 #endif
         device->DrawIndexedPrimitive(D3DPT_TRIANGLELIST, range.vStart, 0, mesh->vCount, range.iStart, range.iCount / 3);
     }
