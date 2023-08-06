@@ -76,7 +76,8 @@
     </Link>
     <PostBuildEvent>
       <Command>xcopy /E /Y /i "$(ProjectDir).trex" "$(TargetDir).trex"
-xcopy /E /Y "$(ProjectDir)d3d9.dll" "$(TargetDir)"</Command>
+xcopy /E /Y "$(ProjectDir)d3d9.dll" "$(TargetDir)"
+xcopy /E /Y "$(ProjectDir)rtx.conf" "$(TargetDir)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -111,7 +112,8 @@ xcopy /E /Y "$(ProjectDir)d3d9.dll" "$(TargetDir)"</Command>
     </Link>
     <PostBuildEvent>
       <Command>xcopy /E /Y /i "$(ProjectDir).trex" "$(TargetDir).trex"
-xcopy /E /Y "$(ProjectDir)d3d9.dll" "$(TargetDir)"</Command>
+xcopy /E /Y "$(ProjectDir)d3d9.dll" "$(TargetDir)"
+xcopy /E /Y "$(ProjectDir)rtx.conf" "$(TargetDir)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
