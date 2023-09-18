@@ -569,7 +569,7 @@ struct Level : IGame {
         
         setShader(Core::pass, type, (Core::pass == Core::passAmbient) ? false : room.flags.water, alphaTest);
 
-        if (room.flags.water) {
+        if (camera->isUnderwater()) {
             Core::setFog(underwaterFogParams);
         } else {
             Core::setFog(levelFogParams);
@@ -955,7 +955,7 @@ struct Level : IGame {
         player = NULL;
 
         underwaterColor     = vec3(0.6f, 0.9f, 0.9f);
-        underwaterFogParams = vec4(underwaterColor * 0.2f, 1.0f / (6 * 1024));
+        underwaterFogParams = vec4(underwaterColor * 0.2f, 1.0f / (2 * 1024));
         levelFogParams      = TR::getFogParams(level.id);
 
         inventory->game = this;
@@ -1078,6 +1078,7 @@ struct Level : IGame {
 
     void init(bool playLogo, bool playVideo) {
         inventory->init(playLogo, playVideo);
+        inventory->addWeapons();
     }
 
     void initEntities() {
@@ -2736,8 +2737,8 @@ struct Level : IGame {
         renderOpaque(roomsList, roomsCount);
         renderTransparent(roomsList, roomsCount);
 
-        if (camera->isUnderwater())
-            renderAdditive(roomsList, roomsCount);
+        if (camera->isUnderwater()) 
+          renderAdditive(roomsList, roomsCount);
 
         Core::setFog(FOG_NONE);
 

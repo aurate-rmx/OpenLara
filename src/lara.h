@@ -1081,7 +1081,7 @@ struct Lara : Character {
             shots++;
 
             if (wpnCurrent != TR::Entity::SHOTGUN)
-                game->addMuzzleFlash(this, i ? LARA_LGUN_JOINT : LARA_RGUN_JOINT, i ? LARA_LGUN_OFFSET : LARA_RGUN_OFFSET, 1 + camera->cameraIndex);
+                game->addMuzzleFlash(this, i ? LARA_LGUN_JOINT : LARA_RGUN_JOINT, i ? LARA_LGUN_OFFSET : LARA_RGUN_OFFSET, -1);
 
         // TODO: use new trace code
             int joint = wpnCurrent == TR::Entity::SHOTGUN ? 8 : (i ? 11 : 8);

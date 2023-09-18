@@ -234,7 +234,9 @@
 #endif
 
 #ifdef FFP
-    #define SPLIT_BY_TILE
+    #ifndef WIN_REMIX
+        #define SPLIT_BY_TILE
+    #endif
     #if defined(_GAPI_GU)
         #define SPLIT_BY_CLUT
     #endif

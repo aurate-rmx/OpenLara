@@ -826,13 +826,15 @@ namespace GAPI {
 
 
     void setFog(const vec4& params) {
-      if (params.w > 0.0f) {
+      if (params.w > 0.0001f) {
         device->SetRenderState(D3DRS_FOGENABLE, TRUE);
 
         DWORD fogColor = 0xFF000000
           | (DWORD(clamp(params.z * 255.0f, 0.0f, 255.0f)) << 0)
           | (DWORD(clamp(params.y * 255.0f, 0.0f, 255.0f)) << 8)
           | (DWORD(clamp(params.x * 255.0f, 0.0f, 255.0f)) << 16);
+        device->SetRenderState(D3DRS_FOGTABLEMODE, D3DFOG_EXP);
+        device->SetRenderState(D3DRS_FOGDENSITY, *(DWORD*)&params.w);
         device->SetRenderState(D3DRS_FOGCOLOR, fogColor);
 
         if (Core::active.shader) {

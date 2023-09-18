@@ -251,7 +251,12 @@ struct MuzzleFlash : Controller {
         if (timer < MUZZLE_FLASH_TIME) {
             float intensity = clamp((MUZZLE_FLASH_TIME - timer) * 20.0f, EPS, 1.0f);
 
-            vec4 lightPos   = vec4(owner->getJoint(joint).pos, 0);
+            Basis b = owner->getJoint(joint);
+            b.w = 1.0f;
+            b.rotate(quat(vec3(1, 0, 0), -PI * 0.5f));
+            b.translate(pos);
+
+            vec4 lightPos   = vec4(b.pos, 0);
             vec4 lightColor = FLASH_LIGHT_COLOR * vec4(intensity, intensity, intensity, 1.0f / sqrtf(intensity));
 
             if (lightIndex > -1) {
